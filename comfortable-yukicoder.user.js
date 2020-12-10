@@ -160,9 +160,9 @@
         return;
     }
 
-    // on contest submissions page
-    // e.g. https://yukicoder.me/contests/300/submissions
-    const contestSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/submissions/);
+    // on contest submissions page / statistics page
+    // e.g. https://yukicoder.me/contests/300/submissions, https://yukicoder.me/contests/300/statistics
+    const contestSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(submissions|statistics)/);
     if (contestSubmissionsPageMatchArray !== null) {
         const contestId = Number(contestSubmissionsPageMatchArray[1]);
         const contest = await getContestById(contestId);
@@ -192,7 +192,7 @@
         const problemNo2IdMap = problems.reduce((curMap, problem) => curMap.set(problem.No, problem.ProblemId), new Map());
 
         // add label to each problem link
-        const lnks = document.querySelectorAll('div#content table td a[href^="/problems/no/"]');
+        const lnks = document.querySelectorAll('div#content a[href^="/problems/no/"]');
         lnks.forEach(async (lnk) => {
             const contestSubmissionsPageProblemLnkMatchArray = lnk.href.match(/^https:\/\/yukicoder\.me\/problems\/no\/(\d+)/);
             if (contestSubmissionsPageProblemLnkMatchArray === null) return;
@@ -247,5 +247,19 @@
         }
 
         return;
+    }
+
+    // on contest leaderboard page
+    // e.g. https://yukicoder.me/contests/300/table
+    const leaderboardPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(table|all)/);
+    if (leaderboardPageMatchArray !== null) {
+        const myRankTableRow = document.querySelector("table.table tbody tr.my_rank");
+        if (myRankTableRow !== null) {
+            const myRankTableRowCloned = myRankTableRow.cloneNode(true);
+            document.querySelector("table.table tbody").insertAdjacentElement("afterbegin", myRankTableRowCloned);
+            /** @type {HTMLTableRowElement} */
+            const myRankTableFirstRow = document.querySelector("table.table tbody tr.my_rank");
+            myRankTableFirstRow.style.borderBottom = '2px solid #ddd';
+        }
     }
 })();
