@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         comfortable-yukicoder
 // @namespace    iilj
-// @version      2020.12.10.1
+// @version      2020.12.13.1
 // @description  タブを追加したりする
 // @author       iilj
 // @match        https://yukicoder.me/contests/*
@@ -153,16 +153,8 @@
         content.insertAdjacentElement('afterbegin', newdivWrapper);
     };
 
-    // ===== main procedure =====
-
-    const href = location.href;
-
-    // on problem page
-    // e.g. https://yukicoder.me/problems/no/1313
-    const problemPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)/);
-    if (problemPageMatchArray !== null) {
-        // get contest info
-        const problemNo = Number(problemPageMatchArray[2]);
+    /** @type {(problemNo: number) => Promise<Problem>} */
+    const onProblemPage = async (problemNo) => {
         const problem = await getProblemByNo(problemNo);
         if (problem.Message !== undefined) {
             console.log(problem.Message);
@@ -180,39 +172,36 @@
         // add tabs
         addcontestLinkTabs(contest.Id);
 
-        const problemSubmissionPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)\/submissions/);
-        if (problemSubmissionPageMatchArray !== null) {
-            const testerIds = problem.TesterIds.split(',').map(testerIdString => Number(testerIdString));
-            const rows = document.querySelectorAll('table.table tbody tr');
-            rows.forEach(row => {
-                /** @type {HTMLAnchorElement} */
-                const userLnk = row.querySelector('td.table_username a');
-                const userLnkMatchArray = userLnk.href.match(/^https:\/\/yukicoder\.me\/users\/(\d+)/);
-                if (userLnkMatchArray === null) return;
-                const userId = Number(userLnkMatchArray[1]);
-                console.log(userId);
-                if (userId === problem.AuthorId) {
-                    row.style.backgroundColor = 'honeydew';
-                    const label = document.createElement('div');
-                    label.textContent = '[Writer]';
-                    userLnk.insertAdjacentElement('afterend', label);
-                } else if (testerIds.includes(userId)) {
-                    row.style.backgroundColor = 'honeydew';
-                    const label = document.createElement('div');
-                    label.textContent = '[Tester]';
-                    userLnk.insertAdjacentElement('afterend', label);
-                }
-            });
-        }
+        return problem;
+    };
 
-        return;
-    }
+    /** @type {(problem: Problem) => void} */
+    const onProblemSubmissionsPage = (problem) => {
+        const testerIds = problem.TesterIds.split(',').map(testerIdString => Number(testerIdString));
+        const rows = document.querySelectorAll('table.table tbody tr');
+        rows.forEach(row => {
+            /** @type {HTMLAnchorElement} */
+            const userLnk = row.querySelector('td.table_username a');
+            const userLnkMatchArray = userLnk.href.match(/^https:\/\/yukicoder\.me\/users\/(\d+)/);
+            if (userLnkMatchArray === null) return;
+            const userId = Number(userLnkMatchArray[1]);
+            console.log(userId);
+            if (userId === problem.AuthorId) {
+                row.style.backgroundColor = 'honeydew';
+                const label = document.createElement('div');
+                label.textContent = '[Writer]';
+                userLnk.insertAdjacentElement('afterend', label);
+            } else if (testerIds.includes(userId)) {
+                row.style.backgroundColor = 'honeydew';
+                const label = document.createElement('div');
+                label.textContent = '[Tester]';
+                userLnk.insertAdjacentElement('afterend', label);
+            }
+        });
+    };
 
-    // on contest submissions page / statistics page
-    // e.g. https://yukicoder.me/contests/300/submissions, https://yukicoder.me/contests/300/statistics
-    const contestSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(submissions|statistics)/);
-    if (contestSubmissionsPageMatchArray !== null) {
-        const contestId = Number(contestSubmissionsPageMatchArray[1]);
+    /** @type {(contestId: number) => Promise<void>} */
+    const onContestSubmissionsPage = async (contestId) => {
         const contest = await getContestById(contestId);
 
         // print contest info
@@ -260,23 +249,19 @@
             if (userId === problem.AuthorId) {
                 row.style.backgroundColor = 'honeydew';
                 const label = document.createElement('div');
-                label.textContent = '[Writer]';
+                label.textContent = '[作問者]';
                 userLnk.insertAdjacentElement('afterend', label);
             } else if (testerIds.includes(userId)) {
                 row.style.backgroundColor = 'honeydew';
                 const label = document.createElement('div');
-                label.textContent = '[Tester]';
+                label.textContent = '[テスター]';
                 userLnk.insertAdjacentElement('afterend', label);
             }
         });
+    };
 
-        return;
-    }
-
-    // on submission result page
-    // e.g. https://yukicoder.me/submissions/591424
-    const submissionPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/submissions\/\d+/);
-    if (submissionPageMatchArray !== null) {
+    /** @type {() => Promise<void>} */
+    const onSubmissionResultPage = async () => {
         const lnk = document.querySelector('div#content a[href^="/problems/no/"]');
         const submissionPageProblemLnkMatchArray = lnk.href.match(/^https:\/\/yukicoder\.me\/problems\/no\/(\d+)/);
         if (submissionPageProblemLnkMatchArray === null) {
@@ -304,14 +289,10 @@
             // print contest info
             printContestInfo(contest, problem);
         }
+    };
 
-        return;
-    }
-
-    // on contest leaderboard page
-    // e.g. https://yukicoder.me/contests/300/table
-    const leaderboardPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(table|all)/);
-    if (leaderboardPageMatchArray !== null) {
+    /** @type {() => void} */
+    const onLeaderboardPage = () => {
         const myRankTableRow = document.querySelector("table.table tbody tr.my_rank");
         if (myRankTableRow !== null) {
             const myRankTableRowCloned = myRankTableRow.cloneNode(true);
@@ -320,15 +301,64 @@
             const myRankTableFirstRow = document.querySelector("table.table tbody tr.my_rank");
             myRankTableFirstRow.style.borderBottom = '2px solid #ddd';
         }
-        return;
-    }
+    };
 
-    // on contest problem list page
-    // e.g. https://yukicoder.me/contests/300
-    const contestPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)$/);
-    if (contestPageMatchArray !== null) {
-        const contestId = Number(contestPageMatchArray[1]);
+    /** @type {(contestId: number) => void} */
+    const onContestPage = (contestId) => {
         addTopLink(`/contests/${contestId}/submissions?my_submission=enabled`, "自分の提出");
-        return;
+    };
+
+    // ===== main procedure =====
+    {
+        const href = location.href;
+
+        // on problem page
+        // e.g. https://yukicoder.me/problems/no/1313
+        const problemPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)/);
+        if (problemPageMatchArray !== null) {
+            // get contest info
+            const problemNo = Number(problemPageMatchArray[2]);
+            const problem = onProblemPage(problemNo);
+
+            const problemSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)\/submissions/);
+            if (problemSubmissionsPageMatchArray !== null) {
+                onProblemSubmissionsPage(problem);
+            }
+            return;
+        }
+
+        // on contest submissions page / statistics page
+        // e.g. https://yukicoder.me/contests/300/submissions, https://yukicoder.me/contests/300/statistics
+        const contestSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(submissions|statistics)/);
+        if (contestSubmissionsPageMatchArray !== null) {
+            const contestId = Number(contestSubmissionsPageMatchArray[1]);
+            onContestSubmissionsPage(contestId);
+            return;
+        }
+
+        // on submission result page
+        // e.g. https://yukicoder.me/submissions/591424
+        const submissionPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/submissions\/\d+/);
+        if (submissionPageMatchArray !== null) {
+            onSubmissionResultPage();
+            return;
+        }
+
+        // on contest leaderboard page
+        // e.g. https://yukicoder.me/contests/300/table
+        const leaderboardPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)\/(table|all)/);
+        if (leaderboardPageMatchArray !== null) {
+            onLeaderboardPage();
+            return;
+        }
+
+        // on contest problem list page
+        // e.g. https://yukicoder.me/contests/300
+        const contestPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)$/);
+        if (contestPageMatchArray !== null) {
+            const contestId = Number(contestPageMatchArray[1]);
+            onContestPage(contestId);
+            return;
+        }
     }
 })();
