@@ -102,34 +102,58 @@
         addTopLink(`/contests/${contestId}`, "ｺﾝﾃｽﾄ問題一覧");
     };
     /** print contest info
-     * @type {(contest: Contest, problem: Problem) => void} */
-    const printContestInfo = (contest, problem) => {
-        const label = getHeader(contest.ProblemIdList.findIndex(problemId => problemId === problem.ProblemId));
+     * @type {(contest: Contest, problem?: Problem) => void} */
+    const printContestInfo = (contest, problem = null) => {
+        const newdiv = document.createElement("div");
+        { // create newdiv
+            const newContestdiv = document.createElement("div");
+
+            const contestLnk = document.createElement("a");
+            contestLnk.innerText = `${contest.Name}`;
+            contestLnk.href = `/contests/${contest.Id}`;
+            newContestdiv.appendChild(contestLnk);
+
+            const contestSuffix = document.createTextNode(` (id=${contest.Id})`);
+            newContestdiv.appendChild(contestSuffix);
+
+            if (problem !== null) {
+                const label = getHeader(contest.ProblemIdList.findIndex(problemId => problemId === problem.ProblemId));
+
+                const space = document.createTextNode(` `);
+                newContestdiv.appendChild(space);
+
+                const problemLnk = document.createElement("a");
+                problemLnk.innerText = `#${label}`;
+                problemLnk.href = `/problems/no/${problem.No}`;
+                newContestdiv.appendChild(problemLnk);
+
+                const problemSuffix = document.createTextNode(` (No.${problem.No})`);
+                newContestdiv.appendChild(problemSuffix);
+            }
+
+            const newDatediv = document.createElement("div");
+            newDatediv.textContent = `(${contest.Date} - ${contest.EndDate})`;
+
+            // newdiv.innerText = `${contest.Name} (id=${contest.Id}) #${label} (No.${problem.No})`;
+            newdiv.appendChild(newContestdiv);
+            newdiv.appendChild(newDatediv);
+        }
+
+        // styling newdiv
+        newdiv.style.display = 'inline-block';
+        newdiv.style.borderRadius = '2px';
+        newdiv.style.padding = '10px';
+        newdiv.style.margin = '10px 0px';
+        newdiv.style.border = '1px solid rgb(59, 173, 214)';
+        newdiv.style.backgroundColor = 'rgba(120, 197, 231, 0.15)';
 
         const content = document.querySelector("div#content");
-        const newdiv = document.createElement("div");
-
-        const contestLnk = document.createElement("a");
-        contestLnk.innerText = `${contest.Name}`;
-        contestLnk.href = `/contests/${contest.Id}`;
-        newdiv.appendChild(contestLnk);
-
-        const contestSuffix = document.createTextNode(` (id=${contest.Id}) `);
-        newdiv.appendChild(contestSuffix);
-
-        const problemLnk = document.createElement("a");
-        problemLnk.innerText = `#${label}`;
-        problemLnk.href = `/problems/no/${problem.No}`;
-        newdiv.appendChild(problemLnk);
-
-        const problemSuffix = document.createTextNode(` (No.${problem.No})`);
-        newdiv.appendChild(problemSuffix);
-
-        // newdiv.innerText = `${contest.Name} (id=${contest.Id}) #${label} (No.${problem.No})`;
-        content.insertAdjacentElement('afterbegin', newdiv);
+        const newdivWrapper = document.createElement("div");
+        newdivWrapper.appendChild(newdiv);
+        content.insertAdjacentElement('afterbegin', newdivWrapper);
     };
 
-    // main procedure
+    // ===== main procedure =====
 
     const href = location.href;
 
@@ -153,9 +177,33 @@
 
         // print contest info
         printContestInfo(contest, problem);
-
         // add tabs
         addcontestLinkTabs(contest.Id);
+
+        const problemSubmissionPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)\/submissions/);
+        if (problemSubmissionPageMatchArray !== null) {
+            const testerIds = problem.TesterIds.split(',').map(testerIdString => Number(testerIdString));
+            const rows = document.querySelectorAll('table.table tbody tr');
+            rows.forEach(row => {
+                /** @type {HTMLAnchorElement} */
+                const userLnk = row.querySelector('td.table_username a');
+                const userLnkMatchArray = userLnk.href.match(/^https:\/\/yukicoder\.me\/users\/(\d+)/);
+                if (userLnkMatchArray === null) return;
+                const userId = Number(userLnkMatchArray[1]);
+                console.log(userId);
+                if (userId === problem.AuthorId) {
+                    row.style.backgroundColor = 'honeydew';
+                    const label = document.createElement('div');
+                    label.textContent = '[Writer]';
+                    userLnk.insertAdjacentElement('afterend', label);
+                } else if (testerIds.includes(userId)) {
+                    row.style.backgroundColor = 'honeydew';
+                    const label = document.createElement('div');
+                    label.textContent = '[Tester]';
+                    userLnk.insertAdjacentElement('afterend', label);
+                }
+            });
+        }
 
         return;
     }
@@ -168,17 +216,7 @@
         const contest = await getContestById(contestId);
 
         // print contest info
-        const content = document.querySelector("div#content");
-        const newdiv = document.createElement("div");
-
-        const contestLnk = document.createElement("a");
-        contestLnk.innerText = `${contest.Name}`;
-        contestLnk.href = `/contests/${contest.Id}`;
-        newdiv.appendChild(contestLnk);
-
-        const contestSuffix = document.createTextNode(` (id=${contest.Id}) `);
-        newdiv.appendChild(contestSuffix);
-        content.insertAdjacentElement('afterbegin', newdiv);
+        printContestInfo(contest);
 
         // add tabs
         addTopLink(`/contests/${contest.Id}/submissions?my_submission=enabled`, "自分の提出");
@@ -188,27 +226,48 @@
             (curMap, problemId, idx) => curMap.set(problemId, getHeader(idx)), new Map());
 
         const problems = await getProblems();
-        /** @type {Map<number, number>} */
-        const problemNo2IdMap = problems.reduce((curMap, problem) => curMap.set(problem.No, problem.ProblemId), new Map());
+        /** @type {Map<number, Problem>} */
+        const problemNo2ProblemMap = problems.reduce((curMap, problem) => curMap.set(problem.No, problem), new Map());
 
-        // add label to each problem link
-        const lnks = document.querySelectorAll('div#content a[href^="/problems/no/"]');
-        lnks.forEach(async (lnk) => {
+        const rows = document.querySelectorAll('table.table tbody tr');
+        rows.forEach(async (row) => {
+            // add label to each problem link
+            const lnk = row.querySelector('td a[href^="/problems/no/"]');
             const contestSubmissionsPageProblemLnkMatchArray = lnk.href.match(/^https:\/\/yukicoder\.me\/problems\/no\/(\d+)/);
             if (contestSubmissionsPageProblemLnkMatchArray === null) return;
             const problemNo = Number(contestSubmissionsPageProblemLnkMatchArray[1]);
-            if (!problemNo2IdMap.has(problemNo)) {
+            if (!problemNo2ProblemMap.has(problemNo)) {
                 const problem = await getProblemByNo(problemNo);
                 if (problem.Message !== undefined) {
-                    problemNo2IdMap.set(problemNo, undefined);
+                    problemNo2ProblemMap.set(problemNo, undefined);
                 } else {
-                    problemNo2IdMap.set(problemNo, problem.ProblemId);
+                    problemNo2ProblemMap.set(problemNo, problem);
                 }
             }
-            const problemId = problemNo2IdMap.get(problemNo);
-            if (problemId === undefined) return;
-            const label = problemId2Label.get(problemId);
+            const problem = problemNo2ProblemMap.get(problemNo);
+            if (problem === undefined) return;
+            const label = problemId2Label.get(problem.ProblemId);
             lnk.insertAdjacentText("afterbegin", `#${label} `);
+
+            // color authors and testers
+            /** @type {HTMLAnchorElement} */
+            const userLnk = row.querySelector('td.table_username a');
+            const userLnkMatchArray = userLnk.href.match(/^https:\/\/yukicoder\.me\/users\/(\d+)/);
+            if (userLnkMatchArray === null) return;
+            const userId = Number(userLnkMatchArray[1]);
+            const testerIds = problem.TesterIds.split(',').map(testerIdString => Number(testerIdString));
+            console.log(userId);
+            if (userId === problem.AuthorId) {
+                row.style.backgroundColor = 'honeydew';
+                const label = document.createElement('div');
+                label.textContent = '[Writer]';
+                userLnk.insertAdjacentElement('afterend', label);
+            } else if (testerIds.includes(userId)) {
+                row.style.backgroundColor = 'honeydew';
+                const label = document.createElement('div');
+                label.textContent = '[Tester]';
+                userLnk.insertAdjacentElement('afterend', label);
+            }
         });
 
         return;
@@ -261,5 +320,15 @@
             const myRankTableFirstRow = document.querySelector("table.table tbody tr.my_rank");
             myRankTableFirstRow.style.borderBottom = '2px solid #ddd';
         }
+        return;
+    }
+
+    // on contest problem list page
+    // e.g. https://yukicoder.me/contests/300
+    const contestPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/contests\/(\d+)$/);
+    if (contestPageMatchArray !== null) {
+        const contestId = Number(contestPageMatchArray[1]);
+        addTopLink(`/contests/${contestId}/submissions?my_submission=enabled`, "自分の提出");
+        return;
     }
 })();
