@@ -55,13 +55,24 @@
     'use strict';
 
     const API_BASE = "https://yukicoder.me/api/v1";
-    const getJson = async (url) => (await (await fetch(url)).json());
+    const getJson = async (url) => {
+        try {
+            const res = await fetch(url);
+            return await res.json();
+        } catch (e) {
+            console.log(e);
+            console.log(`Error on fetch ${url}`);
+            return [];
+        }
+    };
     /** @type {() => Promise<Contest[]>} */
     const getCurrentContests = async () => (await getJson(`${API_BASE}/contest/current`));
     /** @type {() => Promise<Contest[]>} */
     const getPastContests = async () => (await getJson(`${API_BASE}/contest/past`));
     /** @type {(contestId: number) => Promise<Contest>} */
     const getContestById = async (contestId) => (await getJson(`${API_BASE}/contest/id/${contestId}`));
+    /** @type {(ProblemNo: number) => Promise<Problem>} */
+    const getProblemById = async (problemId) => (await getJson(`${API_BASE}/problems/${problemId}`));
     /** @type {(ProblemNo: number) => Promise<Problem>} */
     const getProblemByNo = async (problemNo) => (await getJson(`${API_BASE}/problems/no/${problemNo}`));
     /** @type {() => Promise<Problem[]>} */
@@ -145,7 +156,7 @@
         newdiv.style.padding = '10px';
         newdiv.style.margin = '10px 0px';
         newdiv.style.border = '1px solid rgb(59, 173, 214)';
-        newdiv.style.backgroundColor = 'rgba(120, 197, 231, 0.15)';
+        newdiv.style.backgroundColor = 'rgba(120, 197, 231, 0.1)';
 
         const content = document.querySelector("div#content");
         const newdivWrapper = document.createElement("div");
@@ -175,6 +186,28 @@
         return problem;
     };
 
+    /** @type {(problemId: number) => Promise<Problem>} */
+    const onProblemPageById = async (problemId) => {
+        const problem = await getProblemById(problemId);
+        if (problem.Message !== undefined) {
+            console.log(problem.Message);
+            return;
+        }
+        const contests = (await getCurrentContests()).concat(await getPastContests());
+        const contest = contests.find(contest => contest.ProblemIdList.includes(problem.ProblemId));
+        if (contest === undefined) {
+            console.log("contest not found");
+            return;
+        }
+
+        // print contest info
+        printContestInfo(contest, problem);
+        // add tabs
+        addcontestLinkTabs(contest.Id);
+
+        return problem;
+    };
+
     /** @type {(problem: Problem) => void} */
     const onProblemSubmissionsPage = (problem) => {
         const testerIds = problem.TesterIds.split(',').map(testerIdString => Number(testerIdString));
@@ -185,7 +218,6 @@
             const userLnkMatchArray = userLnk.href.match(/^https:\/\/yukicoder\.me\/users\/(\d+)/);
             if (userLnkMatchArray === null) return;
             const userId = Number(userLnkMatchArray[1]);
-            console.log(userId);
             if (userId === problem.AuthorId) {
                 row.style.backgroundColor = 'honeydew';
                 const label = document.createElement('div');
@@ -289,6 +321,52 @@
             // print contest info
             printContestInfo(contest, problem);
         }
+
+        const resultOrder = ['AC', 'WA', 'TLE', '--', 'MLE', 'OLE', 'QLE', 'RE', 'CE', 'IE'];
+        /** @type {Map<string, number>} */
+        const resultCountMap = resultOrder.reduce((prevMap, label) => prevMap.set(label, 0), new Map());
+
+        /** @type {HTMLTableElement} */
+        const testTable = document.getElementById("test_table");
+        const results = testTable.querySelectorAll('tbody tr td span.label');
+        results.forEach(span => {
+            const resultLabel = span.textContent.trim();
+            const cnt = resultCountMap.get(resultLabel) ?? 0;
+            resultCountMap.set(resultLabel, cnt + 1);
+        });
+
+        // print result
+        const resultTable = document.createElement("div");
+        const addResultRow = (cnt, label) => {
+            const resultEntry = document.createElement("div");
+
+            const labelSpan = document.createElement("span");
+            labelSpan.textContent = label;
+            labelSpan.classList.add('label');
+            labelSpan.classList.add(
+                label === 'AC' ? 'label-success' :
+                    label === 'IE' ? 'label-danger' : 'label-warning');
+            resultEntry.appendChild(labelSpan);
+
+            const countSpan = document.createTextNode(` × ${cnt}`);
+            resultEntry.appendChild(countSpan);
+
+            resultTable.appendChild(resultEntry);
+        };
+        resultCountMap.forEach((cnt, label) => {
+            if (cnt > 0) addResultRow(cnt, label);
+        });
+        resultTable.style.display = 'inline-block';
+        resultTable.style.borderRadius = '2px';
+        resultTable.style.padding = '10px';
+        resultTable.style.margin = '10px 0px';
+        resultTable.style.border = '1px solid rgb(59, 173, 214)';
+        resultTable.style.backgroundColor = 'rgba(120, 197, 231, 0.1)';
+        const wrapper = document.createElement('div');
+        wrapper.appendChild(resultTable);
+
+        const content = document.querySelector("div#testcase_table h4");
+        content.insertAdjacentElement('afterend', wrapper);
     };
 
     /** @type {() => void} */
@@ -312,15 +390,30 @@
     {
         const href = location.href;
 
-        // on problem page
+        // on problem page (ProblemNo)
         // e.g. https://yukicoder.me/problems/no/1313
-        const problemPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)/);
+        const problemPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/no\/(\d+)/);
         if (problemPageMatchArray !== null) {
             // get contest info
-            const problemNo = Number(problemPageMatchArray[2]);
-            const problem = onProblemPage(problemNo);
+            const problemNo = Number(problemPageMatchArray[1]);
+            const problem = await onProblemPage(problemNo);
 
-            const problemSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(no\/)?(\d+)\/submissions/);
+            const problemSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/no\/(\d+)\/submissions/);
+            if (problemSubmissionsPageMatchArray !== null) {
+                onProblemSubmissionsPage(problem);
+            }
+            return;
+        }
+
+        // on problem page (ProblemId)
+        // e.g. https://yukicoder.me/problems/5191
+        const problemPageByIdMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(\d+)/);
+        if (problemPageByIdMatchArray !== null) {
+            // get contest info
+            const problemId = Number(problemPageByIdMatchArray[1]);
+            const problem = await onProblemPageById(problemId);
+
+            const problemSubmissionsPageMatchArray = href.match(/^https:\/\/yukicoder\.me\/problems\/(\d+)\/submissions/);
             if (problemSubmissionsPageMatchArray !== null) {
                 onProblemSubmissionsPage(problem);
             }
