@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         comfortable-yukicoder
 // @namespace    iilj
-// @version      2020.12.13.1
+// @version      2021.5.3.1
 // @description  タブを追加したりする
 // @author       iilj
 // @match        https://yukicoder.me/contests/*
@@ -9,11 +9,11 @@
 // @match        https://yukicoder.me/problems/no/*
 // @match        https://yukicoder.me/problems/*
 // @match        https://yukicoder.me/submissions/*
-// @grant        none
+// @grant        GM_addStyle
 // ==/UserScript==
 
 /**
- * 単一のコンテストを現すクラス．
+ * 単一のコンテストを表すクラス．
  * @typedef {Object} Contest
  * @property {string} Date コンテスト開始日時（RFC 3339）
  * @property {string} EndDate コンテスト終了日時（RFC 3339）
@@ -23,7 +23,7 @@
  */
 
 /**
- * 単一の問題の統計情報を現すクラス．
+ * 単一の問題の統計情報を表すクラス．
  * @typedef {Object} ProblemStatistics
  * @property {number} Total 提出者数
  * @property {number} Solved 正答者数
@@ -35,7 +35,7 @@
  */
 
 /**
- * 単一のコンテストを現すクラス．
+ * 単一のコンテストを表すクラス．
  * @typedef {Object} Problem
  * @property {number} No 問題No
  * @property {number} ProblemId 問題Id
@@ -53,6 +53,13 @@
 
 (async () => {
     'use strict';
+
+    const TAB_CONTAINER_ID = 'cy-tabs-container';
+    GM_addStyle(`
+#toplinks > div#${TAB_CONTAINER_ID} > a {
+    background: linear-gradient(to bottom, white 0%, rgb(255, 242, 243) 100%);
+}
+`);
 
     const API_BASE = "https://yukicoder.me/api/v1";
     const getJson = async (url) => {
@@ -96,11 +103,24 @@
     /** @type {(idx: number) => string} */
     const getHeader = (idx) => getHeaderFromNum(idx + 1);
 
+    let toplinkAppended = false;
+    let tabContainer = undefined;
+    const appendAdditionalLinksSection = () => {
+        const toplinks = document.querySelector("div#toplinks");
+        tabContainer = document.createElement("div");
+        tabContainer.classList.add('left');
+        tabContainer.id = TAB_CONTAINER_ID;
+        toplinks.insertAdjacentElement('beforeend', tabContainer);
+        toplinkAppended = true;
+        return tabContainer;
+    };
+
     /** リンクのタブを追加する
      * @type {(href: string, txt: string) => void} */
     const addTopLink = (href, txt) => {
-        const toplinks = document.querySelector("div#toplinks");
-        const left = toplinks.querySelector("div.left");
+        // const toplinks = document.querySelector("div#toplinks");
+        // const left = toplinks.querySelector("div.left");
+        const left = (toplinkAppended) ? tabContainer : appendAdditionalLinksSection();
         const newtab = document.createElement("a");
         newtab.setAttribute("href", href);
         newtab.innerText = txt;
@@ -221,12 +241,12 @@
             if (userId === problem.AuthorId) {
                 row.style.backgroundColor = 'honeydew';
                 const label = document.createElement('div');
-                label.textContent = '[Writer]';
+                label.textContent = '[作問者]';
                 userLnk.insertAdjacentElement('afterend', label);
             } else if (testerIds.includes(userId)) {
                 row.style.backgroundColor = 'honeydew';
                 const label = document.createElement('div');
-                label.textContent = '[Tester]';
+                label.textContent = '[テスター]';
                 userLnk.insertAdjacentElement('afterend', label);
             }
         });
