@@ -1,7 +1,7 @@
 {
   "name": "comfortable-yukicoder",
   "version": "1.0.0",
-  "description": "yukicoder を快適にする",
+  "description": "yukicoder にいくつかの機能を追加します．主に動線を増やします．",
   "typeRoots": [
     "types",
     "node_modules/@types"
