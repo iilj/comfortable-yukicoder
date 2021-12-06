@@ -5,14 +5,7 @@ import { ContestInfoCard } from '../components/ContestInfoCard';
 import { ContestId } from '../interfaces/Contest';
 import { Problem, ProblemId, ProblemNo } from '../interfaces/Problem';
 import { UserId } from '../interfaces/User';
-import { getContestProblems } from '../utils';
-
-const anchorToUserID = (anchor: HTMLAnchorElement): UserId => {
-    const userLnkMatchArray: RegExpMatchArray | null = /^https:\/\/yukicoder\.me\/users\/(\d+)/.exec(anchor.href);
-    if (userLnkMatchArray === null) return -1;
-    const userId: UserId = Number(userLnkMatchArray[1]);
-    return userId;
-};
+import { anchorToUserID, getContestProblems, getYourUserId } from '../utils';
 
 const colorSubmissionRow = (row: HTMLTableRowElement, authorId: UserId, testerIds: UserId[], yourId: UserId): void => {
     const userLnk: HTMLAnchorElement | null = row.querySelector<HTMLAnchorElement>('td.table_username a');
@@ -38,12 +31,6 @@ const colorSubmissionRow = (row: HTMLTableRowElement, authorId: UserId, testerId
         label.textContent = '[あなた]';
         userLnk.insertAdjacentElement('afterend', label);
     }
-};
-
-const getYourUserId = (): UserId => {
-    const yourIdLnk = document.querySelector<HTMLAnchorElement>('#header #usermenu-btn');
-    if (yourIdLnk === null) return -1; // ログインしていない場合
-    return anchorToUserID(yourIdLnk);
 };
 
 export const onProblemSubmissionsPage = (problem: Problem): void => {

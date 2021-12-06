@@ -1,5 +1,6 @@
 import { Contest } from '../interfaces/Contest';
 import { Problem, ProblemId } from '../interfaces/Problem';
+import { UserId } from '../interfaces/User';
 
 export const getContestProblems = (contest: Contest, problems: Problem[]): Problem[] => {
     const pid2problem: Map<ProblemId, Problem> = new Map<ProblemId, Problem>();
@@ -26,4 +27,17 @@ export const getContestProblems = (contest: Contest, problems: Problem[]): Probl
         } as Problem;
     });
     return contestProblems;
+};
+
+export const anchorToUserID = (anchor: HTMLAnchorElement): UserId => {
+    const userLnkMatchArray: RegExpMatchArray | null = /^https:\/\/yukicoder\.me\/users\/(\d+)/.exec(anchor.href);
+    if (userLnkMatchArray === null) return -1;
+    const userId: UserId = Number(userLnkMatchArray[1]);
+    return userId;
+};
+
+export const getYourUserId = (): UserId => {
+    const yourIdLnk = document.querySelector<HTMLAnchorElement>('#header #usermenu-btn');
+    if (yourIdLnk === null) return -1; // ログインしていない場合
+    return anchorToUserID(yourIdLnk);
 };

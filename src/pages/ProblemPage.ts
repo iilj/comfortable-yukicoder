@@ -4,7 +4,8 @@ import { ContestInfoCard } from '../components/ContestInfoCard';
 import { Contest } from '../interfaces/Contest';
 import { Problem, ProblemId, ProblemNo } from '../interfaces/Problem';
 import { Timer } from '../components/Timer';
-import { getContestProblems } from '../utils';
+import { anchorToUserID, getContestProblems, getYourUserId } from '../utils';
+import { UserId } from '../interfaces/User';
 
 const onProblemPage = async (
     fetchProblem: () => Promise<Problem>,
@@ -81,4 +82,41 @@ export const onProblemPageById = async (
     APIClient: CachedAPIClient
 ): Promise<Problem | null> => {
     return onProblemPage(() => APIClient.fetchProblemById(problemId), suffix, APIClient);
+};
+
+const colorScoreRow = (row: HTMLTableRowElement, authorId: UserId, testerIds: UserId[], yourId: UserId): void => {
+    const userLnk: HTMLAnchorElement | null = row.querySelector<HTMLAnchorElement>('td.table_username a');
+    if (userLnk === null) {
+        throw new Error('テーブル行内にユーザへのリンクが見つかりませんでした');
+    }
+    const userId: UserId = anchorToUserID(userLnk);
+    if (userId === -1) return;
+    if (userId === authorId) {
+        row.style.backgroundColor = 'honeydew';
+        const label = document.createElement('div');
+        label.textContent = '[作問者]';
+        userLnk.insertAdjacentElement('afterend', label);
+    } else if (testerIds.includes(userId)) {
+        row.style.backgroundColor = 'honeydew';
+        const label = document.createElement('div');
+        label.textContent = '[テスター]';
+        userLnk.insertAdjacentElement('afterend', label);
+    }
+    if (userId === yourId) {
+        row.style.backgroundColor = 'aliceblue';
+        const label = document.createElement('div');
+        label.textContent = '[あなた]';
+        userLnk.insertAdjacentElement('afterend', label);
+    }
+};
+
+export const onProblemScorePage = (problem: Problem): void => {
+    const yourId = getYourUserId();
+
+    const testerIds: UserId[] = problem.TesterIds.split(',').map((testerIdString) => Number(testerIdString));
+    const rows: NodeListOf<HTMLTableRowElement> =
+        document.querySelectorAll<HTMLTableRowElement>('table.table tbody tr');
+    rows.forEach((row: HTMLTableRowElement): void => {
+        colorScoreRow(row, problem.AuthorId, testerIds, yourId);
+    });
 };

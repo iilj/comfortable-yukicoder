@@ -2,7 +2,7 @@ import { ContestId } from './interfaces/Contest';
 import { Problem } from './interfaces/Problem';
 import { onContestPage } from './pages/ContestPage';
 import { onLeaderboardPage } from './pages/Leaderboard';
-import { onProblemPageByNo, onProblemPageById } from './pages/ProblemPage';
+import { onProblemPageByNo, onProblemPageById, onProblemScorePage } from './pages/ProblemPage';
 import { onProblemSubmissionsPage, onContestSubmissionsPage } from './pages/SubmissionList';
 import { onSubmissionResultPage } from './pages/SubmissionResult';
 import { CachedAPIClient } from './utils/api';
@@ -27,6 +27,13 @@ void (async () => {
         const problemSubmissionsPageMatchArray = /^\/problems\/no\/(\d+)\/submissions/.exec(path);
         if (problemSubmissionsPageMatchArray !== null) {
             onProblemSubmissionsPage(problem);
+        }
+
+        // on problem score page (ProblemNo)
+        // e.g. https://yukicoder.me/problems/no/5004/score
+        const problemScorePageMatchArray = /^\/problems\/no\/(\d+)\/score(.*)/.exec(path);
+        if (problemScorePageMatchArray !== null) {
+            onProblemScorePage(problem);
         }
         return;
     }
