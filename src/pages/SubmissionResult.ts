@@ -6,7 +6,7 @@ import { Contest } from '../interfaces/Contest';
 import { Problem, ProblemNo } from '../interfaces/Problem';
 import { getContestProblems } from '../utils';
 
-const SUBMISSION_STATUSES = ['AC', 'WA', 'TLE', '--', 'MLE', 'OLE', 'QLE', 'RE', 'CE', 'IE'] as const;
+const SUBMISSION_STATUSES = ['AC', 'WA', 'TLE', '--', 'MLE', 'OLE', 'QLE', 'RE', 'CE', 'IE', 'NoOut'] as const;
 type SubmissionStatus = typeof SUBMISSION_STATUSES[number];
 
 const stringToStatus = (resultText: string): SubmissionStatus => {
