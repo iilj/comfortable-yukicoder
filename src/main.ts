@@ -86,7 +86,7 @@ void (async () => {
     const contestPageMatchArray = /^\/contests\/(\d+)$/.exec(path);
     if (contestPageMatchArray !== null) {
         const contestId = Number(contestPageMatchArray[1]);
-        await onContestPage(contestId, APIClient);
+        onContestPage(contestId);
         return;
     }
 })();
