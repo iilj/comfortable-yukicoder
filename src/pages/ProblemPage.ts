@@ -3,7 +3,6 @@ import { TopLinksManager } from '../utils/TopLinksManager';
 import { ContestInfoCard } from '../components/ContestInfoCard';
 import { Contest } from '../interfaces/Contest';
 import { Problem, ProblemId, ProblemNo } from '../interfaces/Problem';
-import { Timer } from '../components/Timer';
 import { anchorToUserID, getContestProblems, getYourUserId } from '../utils';
 import { UserId } from '../interfaces/User';
 
@@ -15,7 +14,6 @@ const onProblemPage = async (
     const toplinksManager = new TopLinksManager();
     toplinksManager.initContestLinks();
     const contestInfoCard = new ContestInfoCard();
-    const timer = new Timer();
 
     try {
         const [problem, problems, currentContest, pastContest, futureContests] = await Promise.all([
@@ -37,9 +35,6 @@ const onProblemPage = async (
                 );
                 if (futureContest !== undefined) {
                     contest = futureContest;
-                    // print contest info
-                    // contestInfoCard.confirmContestAndProblem(futureContest, problem, suffix);
-                    // return null;
                 } else {
                     contestInfoCard.confirmContestIsNotFound();
                     toplinksManager.confirmWithoutContest(problem);
@@ -58,8 +53,6 @@ const onProblemPage = async (
         contestInfoCard.confirmContestAndProblem(contest, problem, suffix);
         // add tabs
         toplinksManager.confirmContestLinks(contest.Id, contestProblems);
-
-        timer.registerContest(contest);
 
         return problem;
     } catch (error) {
